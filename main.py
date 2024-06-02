@@ -2,11 +2,14 @@ import time
 
 import requests
 from pathlib import Path
+import pandas as pd
 
 
 def search_code(keyword, language, limit, sort, order):
-    # search GitHub api for repositories containing the language
     repos = []
+    df = pd.DataFrame(columns=["name", "url", "stars", "last_updated", "tags"])
+
+    # search GitHub api for repositories containing the language
     headers = {
         'User-Agents': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'
     }
@@ -58,8 +61,26 @@ def search_code(keyword, language, limit, sort, order):
             if count >= int(limit):
                 under_limit = False
                 break
+            
+            # Get Repository URL
             html_url = repo["html_url"]
             repos.append(html_url)
+
+            # Get Count of Tags
+            tags_url = repo["tags_url"]
+            r = requests.get(tags_url)
+            tags_count = len(r.json())
+
+            # Concatenate the Information
+            information = pd.DataFrame([{
+                "name": repo['name'],
+                "url": repo['html_url'],
+                "stars": repo['stargazers_count'],
+                "last_updated": repo['updated_at'],
+                "tags": str(tags_count)
+            }])
+            
+            df = pd.concat([df, information])
             count += 1     
 
         if under_limit == False:
@@ -72,6 +93,7 @@ def search_code(keyword, language, limit, sort, order):
         for repo in repos:
             f.write(repo + "\n")
 
+    df.to_csv("results/github_repositories_information.csv", index=False)
 
 def main(args):
     # create results directory if it doesn't exist
